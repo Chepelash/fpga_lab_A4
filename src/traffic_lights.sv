@@ -191,7 +191,7 @@ always_ff @( posedge clk_i )
       begin : else_block
         case( state )
           RED_S: begin
-            if( cntr < red_time )
+            if( cntr < ( red_time - 1'b1 ) )
               begin
                 cntr      <= cntr + 1'b1;
                 cntr_done <= '0;
@@ -204,7 +204,7 @@ always_ff @( posedge clk_i )
           end
           
           RED_YELLOW_S: begin
-            if( cntr < RED_YELLOW_TIME )
+            if( cntr < ( RED_YELLOW_TIME - 1'b1 ) )
               begin
                 cntr      <= cntr + 1'b1;
                 cntr_done <= '0;
@@ -217,7 +217,7 @@ always_ff @( posedge clk_i )
           end
           
           GREEN_S: begin
-          if( cntr < green_time )
+          if( cntr < ( green_time - 1'b1 ) )
               begin
                 cntr      <= cntr + 1'b1;
                 cntr_done <= '0;
@@ -230,7 +230,7 @@ always_ff @( posedge clk_i )
           end
           
           GREEN_BLINK_OFF_S: begin
-          if( cntr < BLINK_HALF_PERIOD )
+          if( cntr < ( BLINK_HALF_PERIOD - 1'b1 ) )
               begin
                 cntr <= cntr + 1'b1;
                 cntr_done  <= '0;   
@@ -240,7 +240,7 @@ always_ff @( posedge clk_i )
               begin
                 cntr <= '0;
                 cntr_done <= '1;
-                if( blink_cntr < blink_num )
+                if( blink_cntr < ( blink_num - 1'b1 ) )
                   begin
                     blink_cntr <= blink_cntr + 1'b1;    
                     blink_done <= '0;
@@ -255,7 +255,7 @@ always_ff @( posedge clk_i )
           end
           
           GREEN_BLINK_ON_S: begin
-            if( cntr < BLINK_HALF_PERIOD )
+            if( cntr < ( BLINK_HALF_PERIOD - 1'b1 ) )
                begin
                 cntr <= cntr + 1'b1;
                 cntr_done  <= '0;   
@@ -265,7 +265,7 @@ always_ff @( posedge clk_i )
               begin
                 cntr <= '0;
                 cntr_done <= '1;
-                if( blink_cntr < blink_num )
+                if( blink_cntr < ( blink_num - 1'b1 ) )
                   begin
                     blink_cntr <= blink_cntr + 1'b1;    
                     blink_done <= '0;
@@ -280,7 +280,7 @@ always_ff @( posedge clk_i )
           end
           
           YELLOW_S: begin
-            if( cntr < yellow_time )
+            if( cntr < ( yellow_time - 1'b1 ) )
               begin
                 cntr      <= cntr + 1'b1;
                 cntr_done <= '0;
@@ -300,7 +300,7 @@ always_ff @( posedge clk_i )
           end
           
           UNC_ON_S: begin
-            if( cntr < BLINK_HALF_PERIOD )
+            if( cntr < ( BLINK_HALF_PERIOD - 1'b1 ) )
               begin
                 cntr      <= cntr + 1'b1;
                 cntr_done <= '0;
@@ -313,7 +313,7 @@ always_ff @( posedge clk_i )
           end
           
           UNC_OFF_S: begin
-            if( cntr < BLINK_HALF_PERIOD )
+            if( cntr < ( BLINK_HALF_PERIOD - 1'b1 ) )
               begin
                 cntr      <= cntr + 1'b1;
                 cntr_done <= '0;
