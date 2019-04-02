@@ -11,12 +11,13 @@ parameter  logic [15:0] RED_TIME_DEFAULT    = 5;
 parameter  logic [15:0] YELLOW_TIME_DEFAULT = 5;
 parameter  logic [15:0] GREEN_TIME_DEFAULT  = 5;
 
-localparam logic [2:0]  TURN_ON_CMD         = 3'd0;
-localparam logic [2:0]  TURN_OFF_CMD        = 3'd1;
-localparam logic [2:0]  SET_UNCONTR_CMD     = 3'd2;
-localparam logic [2:0]  SET_GREEN_TIME_CMD  = 3'd3;
-localparam logic [2:0]  SET_RED_TIME_CMD    = 3'd4;
-localparam logic [2:0]  SET_YELLOW_TIME_CMD = 3'd5;
+
+enum logic [2:0] {TURN_ON_CMD         = 3'd0,
+                  TURN_OFF_CMD        = 3'd1,
+                  SET_UNCONTR_CMD     = 3'd2,
+                  SET_GREEN_TIME_CMD  = 3'd3,
+                  SET_RED_TIME_CMD    = 3'd4,
+                  SET_YELLOW_TIME_CMD = 3'd5} commands;
 
 logic        clk;
 logic        rst;
@@ -29,6 +30,10 @@ logic        red_o;
 logic        yellow_o;
 logic        green_o;
 
+
+logic [15:0] red_time;
+logic [15:0] yellow_time;
+logic [15:0] green_time;
 
 traffic_lights        #(
   .BLINK_HALF_PERIOD   ( BLINK_HALF_PERIOD   ),
@@ -91,55 +96,53 @@ endtask
 task automatic test_normal_work;
 
   @( posedge clk );
-  @( posedge clk );
   
-  $display("Red light");
-  for( int i = 0; i < RED_TIME_DEFAULT; i++ )
+  $write("Red light -- ");
+  for( int i = 0; i < red_time; i++ )
     begin
       if( ( red_o != 1 ) || ( yellow_o != 0 ) || ( green_o != 0 ) )
         begin
-          $display("Normal functionning: red_s error");
+          $display("Fail!\nNormal functionning: red_s error");
           $stop();
         end
       @( posedge clk );
     end
-    
-//  @( posedge clk );
+  $display("OK!");
+
   
-  $display("Red-yellow light");
+  $write("Red-yellow light -- ");
   for( int i = 0; i < RED_YELLOW_TIME; i++ )
     begin
       if( ( red_o != 1 ) || ( yellow_o != 1 ) || ( green_o != 0 ) )
         begin
-          $display("Normal functionning: red_yellow_s error");
+          $display("Fail!\nNormal functionning: red_yellow_s error");
           $stop();
         end
       @( posedge clk );
     end
+  $display("OK!");
   
-//  @( posedge clk );
-  
-  $display("Green light");
-  for( int i = 0; i < GREEN_TIME_DEFAULT; i++ )
+  $write("Green light -- ");
+  for( int i = 0; i < green_time; i++ )
     begin
       if( ( red_o != 0 ) || ( yellow_o != 0 ) || ( green_o != 1 ) )
         begin
-          $display("Normal functionning: green_s error");
+          $display("Fail!\nNormal functionning: green_s error");
           $stop();
         end
       @( posedge clk );
     end
    
-//  @( posedge clk );
+  $display("OK!");
   
-  $display("Green blinks");
+  $write("Green blinks -- ");
   for( int j = 0; j < GREEN_BLINKS_NUM; j++ )
     begin
       for( int i = 0; i < BLINK_HALF_PERIOD; i++ )
         begin
           if( ( red_o != 0 ) || ( yellow_o != 0 ) || ( green_o != ( j % 2 ) ) )
             begin
-              $display("Normal functionning: green_blink_s error");
+              $display("Fail!\nNormal functionning: green_blink_s error");
               $stop();
             end
           
@@ -147,32 +150,95 @@ task automatic test_normal_work;
         end
     end
     
-//  @( posedge clk );
+  $display("OK!");
     
-  $display("Yellow light");
-  for( int i = 0; i < YELLOW_TIME_DEFAULT; i++ )
+  $write("Yellow light -- ");
+  for( int i = 0; i < yellow_time; i++ )
     begin
       if( ( red_o != 0 ) || ( yellow_o != 1 ) || ( green_o != 0 ) )
         begin
-          $display("Normal functionning: yellow_s error");
+          $display("Fail!\nNormal functionning: yellow_s error");
           $stop();
         end
       @( posedge clk );
     end
+  $display("OK!");
   
-  @( posedge clk );
-  
-  $display("Red light again");
-  for( int i = 0; i < RED_TIME_DEFAULT; i++ )
+  $write("Red light again -- ");
+  for( int i = 0; i < red_time; i++ )
     begin
       if( ( red_o != 1 ) || ( yellow_o != 0 ) || ( green_o != 0 ) )
         begin
-          $display("Normal functionning: red_s error");
+          $display("Fail!\nNormal functionning: red_s error");
           $stop();
         end
       @( posedge clk );
     end
+  $display("OK!");
   
+endtask
+
+
+task automatic test_commands;
+  
+  $write("Testing uncontrollable state -- ");
+  send_cmd(16'd0, SET_UNCONTR_CMD);
+  @( posedge clk );
+  @( posedge clk );  // first iteration BLINK_HALF_PERIOD + 1 ????
+  for( int i = 1; i < 6; i++ )
+    begin
+      for( int j = 0; j < BLINK_HALF_PERIOD; j++ )
+        begin
+          if( yellow_o != ( i % 2 ) )
+            begin
+              $display("Error in uncontrollable_s.");
+              $stop();
+            end
+          
+          @( posedge clk );
+        end
+    end
+    $display("OK!");
+    
+  $display();    
+  $display("Changing red, yellow and green light time to 10 ms");
+  send_cmd(16'd10, SET_RED_TIME_CMD);
+  send_cmd(16'd10, SET_YELLOW_TIME_CMD);
+  send_cmd(16'd10, SET_GREEN_TIME_CMD);
+  
+  $display("Testing another timings");
+  red_time    = 10;
+  yellow_time = 10;
+  green_time  = 10;
+  
+  send_cmd(16'd0, TURN_ON_CMD);
+  @( posedge clk );
+  test_normal_work();
+  $display("Timings changed!\n");
+  
+  $display("Turning off");
+  send_cmd(16'd0, TURN_OFF_CMD);
+  @( posedge clk );
+  for( int i = 0; i < 50; i++ )
+    begin
+      if( ( red_o != '0 ) || ( yellow_o != '0 ) || ( green_o != '0 ) )
+        begin
+          $display("Error in turn off state");
+          $stop();
+        end
+    end
+  $display("Turning off is OK\n");
+  
+  $display("Turning on again");
+  red_time = 5;
+  yellow_time = 5;
+  green_time = 5;
+  send_cmd(16'd0, TURN_ON_CMD);
+  @( posedge clk );
+  test_normal_work();
+  $display("It's turning on and resetting!\n");
+  
+
 endtask
 
 
@@ -181,6 +247,10 @@ initial
     clk <= '1;
     rst <= '0;
     
+    red_time    = RED_TIME_DEFAULT;
+    yellow_time = YELLOW_TIME_DEFAULT;
+    green_time  = GREEN_TIME_DEFAULT;
+    
     fork
       clk_gen();
     join_none
@@ -188,18 +258,26 @@ initial
     fork
       apply_rst();
     join
-//    rst <= '1;
-//    @( posedge clk );
-//    rst <= '0;
-//    @( posedge clk );
-//    
+    
     $display("Starting testbench!");
     
     $display("\n----------------------------------------------");
-    $display("Testing normal functionning. It might take a couple of minutes!");
-//    test_normal_work();
-    for( int i = 0; i < 100000; i++ )
-      @( posedge clk );
+    $display("Testing normal functionning...\n");
+    test_normal_work();
+    $display("\nNormal functionning -- OK!");
+    $display("----------------------------------------------");
+    
+
+    $display("Testing input commands...\n");
+    test_commands();
+    $display("\nCommands are OK!");
+    $display("----------------------------------------------");
+    
+    $display("\nEverything is fine.");
+
+    
+//    for( int i = 0; i < 100000; i++ )
+//      @( posedge clk );
     
     
     $stop();

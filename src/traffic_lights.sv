@@ -20,36 +20,35 @@ module traffic_lights #(
 
 
 // cmd_types
-enum logic [2:0] {TURN_ON_CMD,
-                  TURN_OFF_CMD,
-                  SET_UNC_CMD,
-                  SET_GREEN_TIME_CMD,
-                  SET_RED_TIME_CMD,
-                  SET_YELLOW_TIME_CMD} cmd_type;
+enum logic [2:0] {TURN_ON_CMD         = 3'd0,
+                  TURN_OFF_CMD        = 3'd1,
+                  SET_UNC_CMD         = 3'd2,
+                  SET_GREEN_TIME_CMD  = 3'd3,
+                  SET_RED_TIME_CMD    = 3'd4,
+                  SET_YELLOW_TIME_CMD = 3'd5} cmd_type;
 
 
 // states
-localparam [4:0] RED_S             = 5'b00_100;
-localparam [4:0] RED_YELLOW_S      = 5'b00_110;
-localparam [4:0] GREEN_S           = 5'b00_001;
-localparam [4:0] GREEN_BLINK_OFF_S = 5'b10_000;
-localparam [4:0] GREEN_BLINK_ON_S  = 5'b01_001;
-localparam [4:0] YELLOW_S          = 5'b00_010;
-localparam [4:0] TURN_OFF_S        = 5'b00_000;
-localparam [4:0] UNC_ON_S          = 5'b01_010;
-localparam [4:0] UNC_OFF_S         = 5'b11_000;
-
-logic [4:0] state, next_state;
+enum logic [4:0] {RED_S             = 5'b00_100,
+                  RED_YELLOW_S      = 5'b00_110,
+                  GREEN_S           = 5'b00_001,
+                  GREEN_BLINK_OFF_S = 5'b10_000,
+                  GREEN_BLINK_ON_S  = 5'b01_001,
+                  YELLOW_S          = 5'b00_010,
+                  TURN_OFF_S        = 5'b00_000,
+                  UNC_ON_S          = 5'b01_010,
+                  UNC_OFF_S         = 5'b11_000} state, next_state;
                 
-
+// outputs
 assign {red_o, yellow_o, green_o} = state[2:0];
 
 // registers
 logic [15:0] cntr;
+logic [15:0] unc_cntr;
 logic [15:0] blink_cntr;
-logic turn_on_sig;
-logic cntr_done;
-logic blink_done;
+logic        turn_on_sig;
+logic        cntr_done;
+logic        blink_done;
 
 logic [15:0] red_time;
 logic [15:0] yellow_time;
@@ -73,12 +72,16 @@ always_ff @( posedge clk_i )
         state <= next_state;
         case( cmd_type_i )
           TURN_ON_CMD: begin
-            state <= RED_S;
-            if( state == TURN_OFF_S )
+            if( ( state == TURN_OFF_S ) || ( state == UNC_ON_S ) || 
+                ( state == UNC_OFF_S ) )
               begin
-                red_time    <= RED_TIME_DEFAULT;
-                green_time  <= GREEN_TIME_DEFAULT;
-                yellow_time <= YELLOW_TIME_DEFAULT;
+                state <= RED_S;
+                if( state == TURN_OFF_S )
+                  begin
+                    red_time    <= RED_TIME_DEFAULT;
+                    green_time  <= GREEN_TIME_DEFAULT;
+                    yellow_time <= YELLOW_TIME_DEFAULT;
+                  end
               end
           end
           
@@ -152,16 +155,16 @@ always_comb
       end
       
       UNC_ON_S: begin
-        if( turn_on_sig )
+        if( turn_on_sig )   // UNNESSESARY??????
           next_state = RED_S;
-        else if( blink_done )
+        else if( cntr_done )
           next_state = UNC_OFF_S;
         else
           next_state = UNC_ON_S;
       end
       
       UNC_OFF_S: begin
-        if( turn_on_sig )
+        if( turn_on_sig )   // UNNESSESARY??????
           next_state = RED_S;
         else if( cntr_done )
           next_state = UNC_ON_S;
@@ -186,9 +189,12 @@ always_ff @( posedge clk_i )
         cntr_done  <= '0;
         blink_cntr <= '0;
         cntr       <= '0;
+        unc_cntr   <= '0;
       end
     else
       begin : else_block
+        unc_cntr <= '0;
+        cntr     <= '0;
         case( state )
           RED_S: begin
             if( cntr < ( red_time - 1'b1 ) )
@@ -198,7 +204,7 @@ always_ff @( posedge clk_i )
               end
             else
               begin                
-                cntr <= '0;
+                cntr      <= '0;
                 cntr_done <= '1;
               end
           end
@@ -211,7 +217,7 @@ always_ff @( posedge clk_i )
               end
             else
               begin                
-                cntr <= '0;
+                cntr      <= '0;
                 cntr_done <= '1;
               end
           end
@@ -224,7 +230,7 @@ always_ff @( posedge clk_i )
               end
             else
               begin                
-                cntr <= '0;
+                cntr      <= '0;
                 cntr_done <= '1;
               end
           end
@@ -232,13 +238,13 @@ always_ff @( posedge clk_i )
           GREEN_BLINK_OFF_S: begin
           if( cntr < ( BLINK_HALF_PERIOD - 1'b1 ) )
               begin
-                cntr <= cntr + 1'b1;
+                cntr       <= cntr + 1'b1;
                 cntr_done  <= '0;   
                 blink_done <= '0;
               end
             else
               begin
-                cntr <= '0;
+                cntr      <= '0;
                 cntr_done <= '1;
                 if( blink_cntr < ( blink_num - 1'b1 ) )
                   begin
@@ -257,13 +263,13 @@ always_ff @( posedge clk_i )
           GREEN_BLINK_ON_S: begin
             if( cntr < ( BLINK_HALF_PERIOD - 1'b1 ) )
                begin
-                cntr <= cntr + 1'b1;
+                cntr       <= cntr + 1'b1;
                 cntr_done  <= '0;   
                 blink_done <= '0;
               end
             else
               begin
-                cntr <= '0;
+                cntr      <= '0;
                 cntr_done <= '1;
                 if( blink_cntr < ( blink_num - 1'b1 ) )
                   begin
@@ -287,7 +293,7 @@ always_ff @( posedge clk_i )
               end
             else
               begin                
-                cntr <= '0;
+                cntr      <= '0;
                 cntr_done <= '1;
               end
           end
@@ -300,27 +306,27 @@ always_ff @( posedge clk_i )
           end
           
           UNC_ON_S: begin
-            if( cntr < ( BLINK_HALF_PERIOD - 1'b1 ) )
+            if( unc_cntr < ( BLINK_HALF_PERIOD - 1'b1 ) )
               begin
-                cntr      <= cntr + 1'b1;
+                unc_cntr  <= unc_cntr + 1'b1;
                 cntr_done <= '0;
               end
             else
               begin                
-                cntr <= '0;
+                unc_cntr  <= '0;
                 cntr_done <= '1;
               end
           end
           
           UNC_OFF_S: begin
-            if( cntr < ( BLINK_HALF_PERIOD - 1'b1 ) )
+            if( unc_cntr < ( BLINK_HALF_PERIOD - 1'b1 ) )
               begin
-                cntr      <= cntr + 1'b1;
+                unc_cntr  <= unc_cntr + 1'b1;
                 cntr_done <= '0;
               end
             else
               begin                
-                cntr <= '0;
+                unc_cntr  <= '0;
                 cntr_done <= '1;
               end
           end
