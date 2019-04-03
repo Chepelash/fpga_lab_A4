@@ -42,11 +42,18 @@ enum logic [4:0] {RED_S             = 5'b00_100,
 // outputs
 assign {red_o, yellow_o, green_o} = state[2:0];
 
+// wrk_en
+localparam logic [16:0] DELIMITER = 17'd100000;
+//localparam logic [16:0] DELIMITER = 17'd10;
+
+logic        wrk_en;
+logic [16:0] wrk_cntr;
+
+
 // registers
 logic [15:0] cntr;
 logic [15:0] unc_cntr;
 logic [15:0] blink_cntr;
-logic        turn_on_sig;
 logic        cntr_done;
 logic        blink_done;
 
@@ -54,6 +61,31 @@ logic [15:0] red_time;
 logic [15:0] yellow_time;
 logic [15:0] green_time;
 logic [15:0] blink_num;
+
+// wkr_en
+always_ff @( posedge clk_i )
+  begin
+    if( srst_i )
+      begin
+        wrk_cntr <= '0;
+        wrk_en   <= '0;
+      end
+    else
+      begin
+        if( wrk_cntr < ( DELIMITER - 1'b1 ) )
+          begin
+            wrk_en   <= '0;
+            wrk_cntr <= wrk_cntr + 1'b1;
+          end
+        else
+          begin
+            wrk_en   <= '1;
+            wrk_cntr <= '0;
+          end
+      end
+  end
+
+
 
 // FSM blocks
 always_ff @( posedge clk_i )
@@ -65,8 +97,8 @@ always_ff @( posedge clk_i )
         green_time  <= GREEN_TIME_DEFAULT;
         yellow_time <= YELLOW_TIME_DEFAULT;
         blink_num   <= GREEN_BLINKS_NUM;
-        turn_on_sig <= '0;
       end
+    
     else if( cmd_valid_i )
       begin
         state <= next_state;
@@ -107,8 +139,9 @@ always_ff @( posedge clk_i )
           
         endcase
       end
-    else
+    else if( wrk_en )
       state <= next_state;
+      
   end
   
   
@@ -151,22 +184,18 @@ always_comb
       end
       
       TURN_OFF_S: begin 
-        next_state = ( turn_on_sig ) ? RED_S : TURN_OFF_S;
+        next_state = TURN_OFF_S;
       end
       
-      UNC_ON_S: begin
-        if( turn_on_sig )   // UNNESSESARY??????
-          next_state = RED_S;
-        else if( cntr_done )
+      UNC_ON_S: begin        
+        if( cntr_done )
           next_state = UNC_OFF_S;
         else
           next_state = UNC_ON_S;
       end
       
       UNC_OFF_S: begin
-        if( turn_on_sig )   // UNNESSESARY??????
-          next_state = RED_S;
-        else if( cntr_done )
+        if( cntr_done )
           next_state = UNC_ON_S;
         else
           next_state = UNC_OFF_S;
@@ -191,7 +220,7 @@ always_ff @( posedge clk_i )
         cntr       <= '0;
         unc_cntr   <= '0;
       end
-    else
+    else if( wrk_en )
       begin : else_block
         unc_cntr <= '0;
         cntr     <= '0;

@@ -1,8 +1,11 @@
-`timescale 1ms/1ms
+//`timescale 10ns/1ns
+`timescale 1ns/1ns
 
 module traffic_lights_tb;
 
 parameter int CLK_T = 10;
+parameter int DELIMITER = 100000;
+//parameter int DELIMITER = 10;
 
 parameter  logic [15:0] BLINK_HALF_PERIOD   = 5;
 parameter  logic [15:0] GREEN_BLINKS_NUM    = 4;
@@ -95,7 +98,9 @@ endtask
 
 task automatic test_normal_work;
 
-  @( posedge clk );
+  for( int d = 0; d < DELIMITER+1; d++ )
+        @( posedge clk );
+    
   
   $write("Red light -- ");
   for( int i = 0; i < red_time; i++ )
@@ -105,7 +110,8 @@ task automatic test_normal_work;
           $display("Fail!\nNormal functionning: red_s error");
           $stop();
         end
-      @( posedge clk );
+      for( int d = 0; d < DELIMITER; d++ )
+        @( posedge clk );
     end
   $display("OK!");
 
@@ -118,7 +124,8 @@ task automatic test_normal_work;
           $display("Fail!\nNormal functionning: red_yellow_s error");
           $stop();
         end
-      @( posedge clk );
+      for( int d = 0; d < DELIMITER; d++ )
+        @( posedge clk );
     end
   $display("OK!");
   
@@ -130,7 +137,8 @@ task automatic test_normal_work;
           $display("Fail!\nNormal functionning: green_s error");
           $stop();
         end
-      @( posedge clk );
+      for( int d = 0; d < DELIMITER; d++ )
+        @( posedge clk );
     end
    
   $display("OK!");
@@ -146,7 +154,8 @@ task automatic test_normal_work;
               $stop();
             end
           
-          @( posedge clk );
+          for( int d = 0; d < DELIMITER; d++ )
+            @( posedge clk );
         end
     end
     
@@ -160,7 +169,8 @@ task automatic test_normal_work;
           $display("Fail!\nNormal functionning: yellow_s error");
           $stop();
         end
-      @( posedge clk );
+      for( int d = 0; d < DELIMITER; d++ )
+        @( posedge clk );
     end
   $display("OK!");
   
@@ -172,7 +182,8 @@ task automatic test_normal_work;
           $display("Fail!\nNormal functionning: red_s error");
           $stop();
         end
-      @( posedge clk );
+      for( int d = 0; d < DELIMITER; d++ )
+        @( posedge clk );
     end
   $display("OK!");
   
@@ -183,9 +194,11 @@ task automatic test_commands;
   
   $write("Testing uncontrollable state -- ");
   send_cmd(16'd0, SET_UNCONTR_CMD);
+//  @( posedge clk );
+//  @( posedge clk );  // first iteration BLINK_HALF_PERIOD + 1 ????
+  @( negedge yellow_o );
   @( posedge clk );
-  @( posedge clk );  // first iteration BLINK_HALF_PERIOD + 1 ????
-  for( int i = 1; i < 6; i++ )
+  for( int i = 0; i < 5; i++ )
     begin
       for( int j = 0; j < BLINK_HALF_PERIOD; j++ )
         begin
@@ -195,7 +208,8 @@ task automatic test_commands;
               $stop();
             end
           
-          @( posedge clk );
+          for( int d = 0; d < DELIMITER; d++ )
+            @( posedge clk ); 
         end
     end
     $display("OK!");
@@ -226,6 +240,8 @@ task automatic test_commands;
           $display("Error in turn off state");
           $stop();
         end
+        for( int d = 0; d < DELIMITER; d++ )
+            @( posedge clk );
     end
   $display("Turning off is OK\n");
   
@@ -276,7 +292,7 @@ initial
     $display("\nEverything is fine.");
 
     
-//    for( int i = 0; i < 100000; i++ )
+//    for( int unsigned i = 0; i < 1000000; i++ )
 //      @( posedge clk );
     
     
